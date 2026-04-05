@@ -1,488 +1,950 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>评论系统</title>
-    <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;margin:0 auto;padding:20px;background:#f5f5f5}
-        .blog-post{background:white;padding:30px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:30px}
-        .blog-post h1{margin-bottom:15px}
-        .comment-system{background:white;padding:30px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
-        .comments-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:2px solid #eee}
-        .comments-count{font-size:18px;font-weight:600}
-        .login-btn,.submit-btn{padding:10px 20px;background:#0066cc;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px}
-        .login-btn:hover,.submit-btn:hover{background:#0052a3}
-        .login-btn:disabled,.submit-btn:disabled{background:#ccc;cursor:not-allowed}
-        .user-info{display:flex;align-items:center;gap:10px}
-        .user-avatar{width:36px;height:36px;border-radius:50%}
-        .logout-btn{padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px}
-        .comment-input{margin-bottom:20px}
-        .comment-textarea{width:100%;min-height:100px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;resize:vertical;font-size:14px;font-family:inherit}
-        .comment-textarea:focus{outline:none;border-color:#0066cc}
-        .comment-actions{display:flex;justify-content:flex-end;margin-top:10px}
-        .comment-item{display:flex;gap:12px;padding:15px 0;border-bottom:1px solid #f0f0f0}
-        .comment-avatar{width:40px;height:40px;border-radius:50%}
-        .comment-body{flex:1}
-        .comment-header{display:flex;justify-content:space-between;margin-bottom:6px}
-        .comment-author{font-weight:600;color:#333}
-        .comment-time{font-size:12px;color:#999}
-        .comment-content{color:#555;line-height:1.6;font-size:14px;white-space:pre-wrap}
-        .comment-footer{display:flex;gap:15px;margin-top:10px;font-size:13px;color:#666}
-        .comment-action{cursor:pointer;user-select:none}
-        .comment-action:hover{color:#0066cc}
-        .replies{margin-left:52px;margin-top:10px;padding-left:15px;border-left:3px solid #e0e0e0}
-        .reply-item{padding:10px 0}
-        .reply-input{margin:10px 0 10px 52px;display:none}
-        .reply-input.active{display:block}
-        .reply-textarea{width:100%;min-height:60px;padding:10px;border:1px solid #ddd;border-radius:6px;resize:vertical;font-size:13px;font-family:inherit}
-        .auth-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center}
-        .auth-modal.active{display:flex}
-        .auth-box{background:white;padding:25px;border-radius:12px;width:90%;max-width:380px}
-        .auth-tabs{display:flex;margin-bottom:20px;border-bottom:2px solid #eee}
-        .auth-tab{flex:1;padding:10px;border:none;background:none;cursor:pointer;font-size:15px;color:#666}
-        .auth-tab.active{color:#0066cc;border-bottom:2px solid #0066cc;margin-bottom:-2px}
-        .auth-form input{width:100%;padding:12px;margin-bottom:12px;border:1px solid #ddd;border-radius:6px;font-size:14px}
-        .auth-form button{width:100%;padding:12px;background:#0066cc;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px}
-        .auth-form button:hover{background:#0052a3}
-        .auth-form button:disabled{background:#ccc}
-        .error-msg{color:#e74c3c;font-size:13px;margin-bottom:10px;display:none}
-        .success-msg{color:#27ae60;font-size:13px;margin-bottom:10px;display:none}
-        .empty{text-align:center;padding:40px;color:#999}
-        .loading{text-align:center;padding:40px;color:#666}
-        @media(max-width:600px){.replies,.reply-input{margin-left:0;padding-left:10px}}
-    </style>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>评论系统 - 春分绿色主题</title>
+	<style>
+		/* ============ 春分绿色主题 - 完整样式 ============ */
+		html {
+			-webkit-text-size-adjust: 100%;
+			text-size-adjust: 100%;
+			scroll-behavior: smooth;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			touch-action: manipulation;
+		}
+
+		body {
+			font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+			background-color: #f0fff0;
+			color: #333;
+			line-height: 1.6;
+			padding: 20px;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		a {
+			text-decoration: none;
+			color: #4CAF50;
+		}
+
+		strong, b {
+			font-weight: 600;
+		}
+
+		code, pre, kbd {
+			font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+			font-weight: 300;
+			line-height: 1.5;
+			letter-spacing: 0.2px;
+		}
+
+		:root {
+			--theme: #2E7D32;
+			--spring: #4CAF50;
+			--light-spring: #81C784;
+			--bg-light: #f0fff0;
+			--text-light: #1b5e20;
+		}
+
+		/* 博客文章卡片 */
+		.blog-post {
+			background: white;
+			padding: 30px;
+			border-radius: 12px;
+			box-shadow: 0 4px 12px rgba(46, 125, 50, 0.08);
+			margin-bottom: 30px;
+			border: 1px solid rgba(76, 175, 80, 0.2);
+		}
+
+		.blog-post h1 {
+			color: var(--theme);
+			margin-bottom: 15px;
+			font-size: 2rem;
+		}
+
+		/* 评论系统容器 - 春分绿色主题 */
+		.comment-system {
+			background: white;
+			padding: 30px;
+			border-radius: 12px;
+			box-shadow: 0 4px 12px rgba(46, 125, 50, 0.08);
+			border: 1px solid rgba(76, 175, 80, 0.2);
+		}
+
+		.comments-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+			padding-bottom: 15px;
+			border-bottom: 2px solid #E8F5E9;
+		}
+
+		.comments-count {
+			font-size: 18px;
+			font-weight: 600;
+			color: var(--theme);
+		}
+
+		.login-btn, .submit-btn {
+			padding: 10px 20px;
+			background: var(--spring);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 14px;
+			transition: all 0.2s ease;
+		}
+
+		.login-btn:hover, .submit-btn:hover {
+			background: var(--theme);
+			box-shadow: 0 0 12px rgba(76, 175, 80, 0.5);
+			transform: translateY(-1px);
+		}
+
+		.login-btn:disabled, .submit-btn:disabled {
+			background: #ccc;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+
+		.user-info {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.user-avatar {
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
+			border: 2px solid var(--spring);
+			object-fit: cover;
+		}
+
+		.logout-btn {
+			padding: 6px 12px;
+			background: #f5f5f5;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 12px;
+			transition: all 0.2s;
+		}
+
+		.logout-btn:hover {
+			background: #e0e0e0;
+			border-color: var(--spring);
+		}
+
+		.comment-input {
+			margin-bottom: 20px;
+		}
+
+		.comment-textarea {
+			width: 100%;
+			min-height: 100px;
+			padding: 12px;
+			border: 2px solid #E8F5E9;
+			border-radius: 8px;
+			resize: vertical;
+			font-size: 14px;
+			font-family: inherit;
+			transition: border-color 0.2s, box-shadow 0.2s;
+		}
+
+		.comment-textarea:focus {
+			outline: none;
+			border-color: var(--spring);
+			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+		}
+
+		.comment-actions {
+			display: flex;
+			justify-content: flex-end;
+			margin-top: 10px;
+		}
+
+		/* 评论列表 */
+		.comment-item {
+			display: flex;
+			gap: 12px;
+			padding: 15px 0;
+			border-bottom: 1px solid #E8F5E9;
+		}
+
+		.comment-avatar {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			border: 2px solid var(--spring);
+			object-fit: cover;
+		}
+
+		.comment-body {
+			flex: 1;
+		}
+
+		.comment-header {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 6px;
+		}
+
+		.comment-author {
+			font-weight: 600;
+			color: var(--theme);
+		}
+
+		.comment-time {
+			font-size: 12px;
+			color: #999;
+		}
+
+		.comment-content {
+			color: #555;
+			line-height: 1.6;
+			font-size: 14px;
+			white-space: pre-wrap;
+		}
+
+		.comment-footer {
+			display: flex;
+			gap: 15px;
+			margin-top: 10px;
+			font-size: 13px;
+			color: #666;
+		}
+
+		.comment-action {
+			cursor: pointer;
+			user-select: none;
+			transition: color 0.2s;
+		}
+
+		.comment-action:hover {
+			color: var(--spring);
+		}
+
+		.replies {
+			margin-left: 52px;
+			margin-top: 10px;
+			padding-left: 15px;
+			border-left: 3px solid var(--light-spring);
+		}
+
+		.reply-item {
+			padding: 10px 0;
+		}
+
+		.reply-input {
+			margin: 10px 0 10px 52px;
+			display: none;
+		}
+
+		.reply-input.active {
+			display: block;
+		}
+
+		.reply-textarea {
+			width: 100%;
+			min-height: 60px;
+			padding: 10px;
+			border: 1px solid #E8F5E9;
+			border-radius: 6px;
+			resize: vertical;
+			font-size: 13px;
+			font-family: inherit;
+		}
+
+		.reply-textarea:focus {
+			outline: none;
+			border-color: var(--spring);
+		}
+
+		/* 模态框 - 春分绿色 */
+		.auth-modal {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(10, 40, 10, 0.85);
+			z-index: 1000;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.auth-modal.active {
+			display: flex;
+		}
+
+		.auth-box {
+			background: white;
+			padding: 25px;
+			border-radius: 12px;
+			width: 90%;
+			max-width: 380px;
+			border: 2px solid var(--spring);
+			box-shadow: 0 10px 30px rgba(46, 125, 50, 0.3);
+		}
+
+		.auth-tabs {
+			display: flex;
+			margin-bottom: 20px;
+			border-bottom: 2px solid #E8F5E9;
+		}
+
+		.auth-tab {
+			flex: 1;
+			padding: 10px;
+			border: none;
+			background: none;
+			cursor: pointer;
+			font-size: 15px;
+			color: #666;
+			transition: all 0.2s;
+		}
+
+		.auth-tab.active {
+			color: var(--spring);
+			border-bottom: 2px solid var(--spring);
+			margin-bottom: -2px;
+		}
+
+		.auth-form input {
+			width: 100%;
+			padding: 12px;
+			margin-bottom: 12px;
+			border: 1px solid #ddd;
+			border-radius: 6px;
+			font-size: 14px;
+			transition: border-color 0.2s;
+		}
+
+		.auth-form input:focus {
+			outline: none;
+			border-color: var(--spring);
+		}
+
+		.auth-form button {
+			width: 100%;
+			padding: 12px;
+			background: var(--spring);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 15px;
+			transition: all 0.2s;
+		}
+
+		.auth-form button:hover {
+			background: var(--theme);
+		}
+
+		.auth-form button:disabled {
+			background: #ccc;
+		}
+
+		.error-msg {
+			color: #e74c3c;
+			font-size: 13px;
+			margin-bottom: 10px;
+			display: none;
+		}
+
+		.success-msg {
+			color: var(--theme);
+			font-size: 13px;
+			margin-bottom: 10px;
+			display: none;
+		}
+
+		.empty {
+			text-align: center;
+			padding: 40px;
+			color: #999;
+		}
+
+		.loading {
+			text-align: center;
+			padding: 40px;
+			color: #666;
+		}
+
+		@media (max-width: 600px) {
+			body {
+				padding: 12px;
+			}
+			.replies, .reply-input {
+				margin-left: 0;
+				padding-left: 10px;
+			}
+			.blog-post, .comment-system {
+				padding: 20px;
+			}
+			.blog-post h1 {
+				font-size: 1.5rem;
+			}
+		}
+
+		/* ============ 深色模式 ============ */
+		@media (prefers-color-scheme: dark) {
+			body {
+				background-color: #0A0F0A;
+				color: #E8F5E9;
+			}
+
+			.blog-post {
+				background: #0F1F0F;
+				border: 1px solid rgba(76, 175, 80, 0.25);
+			}
+
+			.blog-post h1 {
+				color: #81C784;
+			}
+
+			.comment-system {
+				background: #0F1F0F;
+				border: 1px solid rgba(76, 175, 80, 0.25);
+			}
+
+			.comments-header {
+				border-bottom-color: #1B4D1B;
+			}
+
+			.comments-count {
+				color: #81C784;
+			}
+
+			.logout-btn {
+				background: #1B2A1B;
+				border-color: #2E7D32;
+				color: #E8F5E9;
+			}
+
+			.logout-btn:hover {
+				background: #2E3D2E;
+			}
+
+			.comment-textarea {
+				background: #0F1F0F;
+				border-color: #2E7D32;
+				color: #E8F5E9;
+			}
+
+			.comment-textarea:focus {
+				border-color: #4CAF50;
+				box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+			}
+
+			.comment-item {
+				border-bottom-color: #1B4D1B;
+			}
+
+			.comment-author {
+				color: #81C784;
+			}
+
+			.comment-content {
+				color: #C8E6C9;
+			}
+
+			.comment-time {
+				color: #8A9A8A;
+			}
+
+			.comment-footer {
+				color: #8A9A8A;
+			}
+
+			.replies {
+				border-left-color: #2E7D32;
+			}
+
+			.reply-textarea {
+				background: #0F1F0F;
+				border-color: #2E7D32;
+				color: #E8F5E9;
+			}
+
+			.auth-box {
+				background: #0F1F0F;
+				border-color: #4CAF50;
+			}
+
+			.auth-tabs {
+				border-bottom-color: #1B4D1B;
+			}
+
+			.auth-tab {
+				color: #8A9A8A;
+			}
+
+			.auth-tab.active {
+				color: #81C784;
+				border-bottom-color: #81C784;
+			}
+
+			.auth-form input {
+				background: #0F1F0F;
+				border-color: #2E7D32;
+				color: #E8F5E9;
+			}
+
+			.empty, .loading {
+				color: #8A9A8A;
+			}
+		}
+	</style>
 </head>
 <body>
-    <article class="blog-post">
-        <h1>📝 测试文章</h1>
-        <p>这是一篇测试文章，下方是完整的评论系统。支持注册、登录、发表评论和回复。</p>
-    </article>
-    
-    <div id="comments" class="comment-system" data-post-id="demo-post-001"></div>
+	<article class="blog-post">
+		<h1>🌱 测试文章</h1>
+		<p>这是一篇测试文章，下方是完整的评论系统。支持注册、登录、发表评论和回复。春分绿色主题，护眼舒适~</p>
+	</article>
+	
+	<div id="comments" class="comment-system" data-post-id="demo-post-001"></div>
 
-    <script>
-    class CommentSystem {
-        constructor(sel) {
-            this.box = document.querySelector(sel);
-            this.postId = this.box.dataset.postId;
-            this.api = '/.netlify/functions';
-            this.token = localStorage.getItem('cmt_token');
-            this.user = JSON.parse(localStorage.getItem('cmt_user') || 'null');
-            // 绑定方法到实例，这样可以在 HTML onclick 中使用
-            this.init();
-        }
-        
-        init() {
-            this.render();
-            this.load();
-        }
-        
-        render() {
-            this.box.innerHTML = `
-                <div class="auth-modal" id="modal">
-                    <div class="auth-box">
-                        <div class="auth-tabs">
-                            <button class="auth-tab active" data-tab="login">登录</button>
-                            <button class="auth-tab" data-tab="reg">注册</button>
-                        </div>
-                        <form id="loginForm" class="auth-form">
-                            <div class="error-msg" id="loginErr"></div>
-                            <div class="success-msg" id="loginOk"></div>
-                            <input type="email" name="email" placeholder="邮箱" required>
-                            <input type="password" name="pwd" placeholder="密码" required>
-                            <button type="submit">登录</button>
-                        </form>
-                        <form id="regForm" class="auth-form" style="display:none">
-                            <div class="error-msg" id="regErr"></div>
-                            <div class="success-msg" id="regOk"></div>
-                            <input type="text" name="name" placeholder="用户名" required minlength="2" maxlength="20">
-                            <input type="email" name="email" placeholder="邮箱" required>
-                            <input type="password" name="pwd" placeholder="密码（6位以上）" required minlength="6">
-                            <button type="submit">注册</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="comments-header">
-                    <span class="comments-count">💬 评论</span>
-                    ${this.user ? `
-                        <div class="user-info">
-                            <img src="${this.user.avatar}" class="user-avatar">
-                            <span>${this.escapeHtml(this.user.name)}</span>
-                            <button class="logout-btn" data-action="logout">退出</button>
-                        </div>
-                    ` : `
-                        <button class="login-btn" data-action="showLogin">登录 / 注册</button>
-                    `}
-                </div>
-                <div class="comment-input">
-                    <textarea class="comment-textarea" id="mainText" placeholder="${this.user ? '写下你的评论...' : '请先登录后发表评论'}" ${this.user ? '' : 'disabled'}></textarea>
-                    <div class="comment-actions">
-                        <button class="submit-btn" data-action="submit" ${this.user ? '' : 'disabled'}>发表评论</button>
-                    </div>
-                </div>
-                <div id="list"><div class="loading">加载中...</div></div>
-            `;
-            
-            // 绑定事件（使用事件委托，避免动态元素问题）
-            this.bindEvents();
-        }
-        
-        bindEvents() {
-            // 模态框关闭
-            const modal = document.getElementById('modal');
-            if (modal) {
-                modal.onclick = (e) => {
-                    if (e.target.id === 'modal') this.hideLogin();
-                };
-            }
-            
-            // 标签页切换
-            const tabs = document.querySelectorAll('.auth-tab');
-            tabs.forEach(tab => {
-                tab.onclick = () => this.switchTab(tab.dataset.tab);
-            });
-            
-            // 登录表单
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.onsubmit = (e) => this.doLogin(e);
-            }
-            
-            // 注册表单
-            const regForm = document.getElementById('regForm');
-            if (regForm) {
-                regForm.onsubmit = (e) => this.doReg(e);
-            }
-            
-            // 动态按钮（使用事件委托）
-            this.box.addEventListener('click', (e) => {
-                const btn = e.target.closest('[data-action]');
-                if (!btn) return;
-                
-                const action = btn.dataset.action;
-                switch(action) {
-                    case 'showLogin':
-                        this.showLogin();
-                        break;
-                    case 'logout':
-                        this.logout();
-                        break;
-                    case 'submit':
-                        this.submit();
-                        break;
-                }
-            });
-            
-            // 回复按钮的事件委托
-            this.box.addEventListener('click', (e) => {
-                const replyBtn = e.target.closest('[data-reply]');
-                if (replyBtn) {
-                    const id = replyBtn.dataset.reply;
-                    this.showReply(id);
-                }
-                
-                const sendReplyBtn = e.target.closest('[data-send-reply]');
-                if (sendReplyBtn) {
-                    const id = sendReplyBtn.dataset.sendReply;
-                    this.sendReply(id);
-                }
-            });
-        }
-        
-        switchTab(tab) {
-            const tabs = document.querySelectorAll('.auth-tab');
-            tabs.forEach((t, i) => {
-                const isActive = (tab === 'login' && i === 0) || (tab === 'reg' && i === 1);
-                t.classList.toggle('active', isActive);
-            });
-            const loginForm = document.getElementById('loginForm');
-            const regForm = document.getElementById('regForm');
-            if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
-            if (regForm) regForm.style.display = tab === 'reg' ? 'block' : 'none';
-            const errs = document.querySelectorAll('.error-msg, .success-msg');
-            errs.forEach(x => x.style.display = 'none');
-        }
-        
-        showLogin() {
-            const modal = document.getElementById('modal');
-            if (modal) {
-                modal.classList.add('active');
-                const input = document.querySelector('#loginForm input');
-                if (input) input.focus();
-            }
-        }
-        
-        hideLogin() {
-            const modal = document.getElementById('modal');
-            if (modal) modal.classList.remove('active');
-            const forms = document.querySelectorAll('.auth-form');
-            forms.forEach(f => f.reset());
-            const msgs = document.querySelectorAll('.error-msg, .success-msg');
-            msgs.forEach(x => x.style.display = 'none');
-        }
-        
-        async doLogin(e) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = form.querySelector('button');
-            const err = document.getElementById('loginErr');
-            
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = '登录中...';
-            }
-            if (err) err.style.display = 'none';
-            
-            try {
-                const res = await fetch(this.api + '/auth-login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: form.email.value,
-                        password: form.pwd.value
-                    })
-                });
-                
-                const data = await res.json();
-                
-                if (!res.ok) throw new Error(data.error || '登录失败');
-                
-                this.token = data.token;
-                this.user = data.user;
-                localStorage.setItem('cmt_token', this.token);
-                localStorage.setItem('cmt_user', JSON.stringify(this.user));
-                
-                this.hideLogin();
-                this.init();
-                
-            } catch (errMsg) {
-                if (err) {
-                    err.textContent = errMsg.message;
-                    err.style.display = 'block';
-                }
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = '登录';
-                }
-            }
-            return false;
-        }
-        
-        async doReg(e) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = form.querySelector('button');
-            const err = document.getElementById('regErr');
-            const ok = document.getElementById('regOk');
-            
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = '注册中...';
-            }
-            if (err) err.style.display = 'none';
-            if (ok) ok.style.display = 'none';
-            
-            try {
-                const res = await fetch(this.api + '/auth-register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: form.name.value,
-                        email: form.email.value,
-                        password: form.pwd.value
-                    })
-                });
-                
-                const data = await res.json();
-                
-                if (!res.ok) throw new Error(data.error || '注册失败');
-                
-                if (ok) {
-                    ok.textContent = '注册成功！自动登录中...';
-                    ok.style.display = 'block';
-                }
-                
-                // 自动登录
-                await this.doLogin({
-                    preventDefault: () => {},
-                    target: { email: { value: form.email.value }, pwd: { value: form.pwd.value } }
-                });
-                
-            } catch (errMsg) {
-                if (err) {
-                    err.textContent = errMsg.message;
-                    err.style.display = 'block';
-                }
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = '注册';
-                }
-            }
-            return false;
-        }
-        
-        logout() {
-            localStorage.removeItem('cmt_token');
-            localStorage.removeItem('cmt_user');
-            this.token = null;
-            this.user = null;
-            this.init();
-        }
-        
-        async load() {
-            const list = document.getElementById('list');
-            if (!list) return;
-            try {
-                const res = await fetch(this.api + '/comment-list?postId=' + this.postId);
-                const data = await res.json();
-                
-                if (!res.ok) throw new Error(data.error);
-                
-                if (!data.comments || data.comments.length === 0) {
-                    list.innerHTML = '<div class="empty">暂无评论，来抢沙发吧！</div>';
-                    return;
-                }
-                
-                list.innerHTML = data.comments.map(c => this.renderComment(c)).join('');
-                
-            } catch (err) {
-                list.innerHTML = '<div class="empty">加载失败：' + this.escapeHtml(err.message) + '</div>';
-            }
-        }
-        
-        renderComment(c, isReply = false) {
-            const time = new Date(c.createdAt).toLocaleString('zh-CN', {
-                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-            });
-            
-            const replies = !isReply && c.replies && c.replies.length > 0
-                ? '<div class="replies">' + c.replies.map(r => this.renderComment(r, true)).join('') + '</div>'
-                : '';
-            
-            const replyBox = !isReply && this.user
-                ? `<div class="reply-input" id="rp-${c._id}">
-                    <textarea class="reply-textarea" id="rt-${c._id}" placeholder="回复 ${this.escapeHtml(c.authorName)}..."></textarea>
-                    <div class="comment-actions">
-                        <button class="submit-btn" data-send-reply="${c._id}">发送回复</button>
-                    </div>
-                </div>`
-                : '';
-            
-            const actions = !isReply
-                ? `<div class="comment-footer">
-                    ${this.user ? `<span class="comment-action" data-reply="${c._id}">↩️ 回复</span>` : ''}
-                    <span class="comment-action">👍 ${c.likes || 0}</span>
-                </div>`
-                : '';
-            
-            return `
-                <div class="${isReply ? 'reply-item' : 'comment-item'}">
-                    <img src="${c.authorAvatar}" class="comment-avatar">
-                    <div class="comment-body">
-                        <div class="comment-header">
-                            <span class="comment-author">${this.escapeHtml(c.authorName)}</span>
-                            <span class="comment-time">${time}</span>
-                        </div>
-                        <div class="comment-content">${this.escapeHtml(c.content)}</div>
-                        ${actions}
-                        ${replyBox}
-                        ${replies}
-                    </div>
-                </div>
-            `;
-        }
-        
-        escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        showReply(id) {
-            const box = document.getElementById('rp-' + id);
-            if (box) {
-                box.classList.toggle('active');
-                if (box.classList.contains('active')) {
-                    const textarea = document.getElementById('rt-' + id);
-                    if (textarea) setTimeout(() => textarea.focus(), 100);
-                }
-            }
-        }
-        
-        async submit() {
-            const textarea = document.getElementById('mainText');
-            if (!textarea) return;
-            const content = textarea.value.trim();
-            if (!content) return;
-            
-            const btn = this.box.querySelector('[data-action="submit"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = '发送中...';
-            }
-            
-            try {
-                await this.postComment(content);
-                textarea.value = '';
-                await this.load();
-            } catch (err) {
-                alert('发送失败：' + err.message);
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = '发表评论';
-                }
-            }
-        }
-        
-        async sendReply(parentId) {
-            const textarea = document.getElementById('rt-' + parentId);
-            if (!textarea) return;
-            const content = textarea.value.trim();
-            if (!content) return;
-            
-            try {
-                await this.postComment(content, parentId);
-                const replyBox = document.getElementById('rp-' + parentId);
-                if (replyBox) replyBox.classList.remove('active');
-                await this.load();
-            } catch (err) {
-                alert('发送失败：' + err.message);
-            }
-        }
-        
-        async postComment(content, parentId = null) {
-            if (!this.token) {
-                throw new Error('请先登录');
-            }
-            
-            const res = await fetch(this.api + '/comment-post', { 
-                method: 'POST', 
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': 'Bearer ' + this.token 
-                },
-                body: JSON.stringify({ content, postId: this.postId, parentId })
-            });
-              
-            if (res.status === 401) {
-                alert('登录已过期，请重新登录');
-                this.logout();
-                throw new Error('未登录');
-            }
-            
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '发送失败');
-        }
-    }
-    
-    // 启动应用
-    new CommentSystem('#comments');
-    </script>
+	<script>
+	class CommentSystem {
+		constructor(sel) {
+			this.box = document.querySelector(sel);
+			this.postId = this.box.dataset.postId;
+			this.api = '/.netlify/functions';
+			this.token = localStorage.getItem('cmt_token');
+			this.user = JSON.parse(localStorage.getItem('cmt_user') || 'null');
+			this.init();
+		}
+		
+		init() {
+			this.render();
+			this.load();
+		}
+		
+		render() {
+			this.box.innerHTML = `
+				<div class="auth-modal" id="modal">
+					<div class="auth-box">
+						<div class="auth-tabs">
+							<button class="auth-tab active" data-tab="login">登录</button>
+							<button class="auth-tab" data-tab="reg">注册</button>
+						</div>
+						<form id="loginForm" class="auth-form">
+							<div class="error-msg" id="loginErr"></div>
+							<div class="success-msg" id="loginOk"></div>
+							<input type="email" name="email" placeholder="邮箱" required>
+							<input type="password" name="pwd" placeholder="密码" required>
+							<button type="submit">登录</button>
+						</form>
+						<form id="regForm" class="auth-form" style="display:none">
+							<div class="error-msg" id="regErr"></div>
+							<div class="success-msg" id="regOk"></div>
+							<input type="text" name="name" placeholder="用户名" required minlength="2" maxlength="20">
+							<input type="email" name="email" placeholder="邮箱" required>
+							<input type="password" name="pwd" placeholder="密码（6位以上）" required minlength="6">
+							<button type="submit">注册</button>
+						</form>
+					</div>
+				</div>
+				<div class="comments-header">
+					<span class="comments-count">💬 评论</span>
+					${this.user ? `
+						<div class="user-info">
+							<img src="${this.user.avatar}" class="user-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=default'">
+							<span>${this.escapeHtml(this.user.name)}</span>
+							<button class="logout-btn" data-action="logout">退出</button>
+						</div>
+					` : `
+						<button class="login-btn" data-action="showLogin">🌿 登录 / 注册</button>
+					`}
+				</div>
+				<div class="comment-input">
+					<textarea class="comment-textarea" id="mainText" placeholder="${this.user ? '写下你的评论...' : '请先登录后发表评论'}" ${this.user ? '' : 'disabled'}></textarea>
+					<div class="comment-actions">
+						<button class="submit-btn" data-action="submit" ${this.user ? '' : 'disabled'}>🌱 发表评论</button>
+					</div>
+				</div>
+				<div id="list"><div class="loading">加载中...</div></div>
+			`;
+			
+			this.bindEvents();
+		}
+		
+		bindEvents() {
+			const modal = document.getElementById('modal');
+			if (modal) {
+				modal.onclick = (e) => {
+					if (e.target.id === 'modal') this.hideLogin();
+				};
+			}
+			
+			const tabs = document.querySelectorAll('.auth-tab');
+			tabs.forEach(tab => {
+				tab.onclick = () => this.switchTab(tab.dataset.tab);
+			});
+			
+			const loginForm = document.getElementById('loginForm');
+			if (loginForm) {
+				loginForm.onsubmit = (e) => this.doLogin(e);
+			}
+			
+			const regForm = document.getElementById('regForm');
+			if (regForm) {
+				regForm.onsubmit = (e) => this.doReg(e);
+			}
+			
+			this.box.addEventListener('click', (e) => {
+				const btn = e.target.closest('[data-action]');
+				if (!btn) return;
+				
+				const action = btn.dataset.action;
+				switch(action) {
+					case 'showLogin':
+						this.showLogin();
+						break;
+					case 'logout':
+						this.logout();
+						break;
+					case 'submit':
+						this.submit();
+						break;
+				}
+			});
+			
+			this.box.addEventListener('click', (e) => {
+				const replyBtn = e.target.closest('[data-reply]');
+				if (replyBtn) {
+					const id = replyBtn.dataset.reply;
+					this.showReply(id);
+				}
+				
+				const sendReplyBtn = e.target.closest('[data-send-reply]');
+				if (sendReplyBtn) {
+					const id = sendReplyBtn.dataset.sendReply;
+					this.sendReply(id);
+				}
+			});
+		}
+		
+		switchTab(tab) {
+			const tabs = document.querySelectorAll('.auth-tab');
+			tabs.forEach((t, i) => {
+				const isActive = (tab === 'login' && i === 0) || (tab === 'reg' && i === 1);
+				t.classList.toggle('active', isActive);
+			});
+			const loginForm = document.getElementById('loginForm');
+			const regForm = document.getElementById('regForm');
+			if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
+			if (regForm) regForm.style.display = tab === 'reg' ? 'block' : 'none';
+			const errs = document.querySelectorAll('.error-msg, .success-msg');
+			errs.forEach(x => x.style.display = 'none');
+		}
+		
+		showLogin() {
+			const modal = document.getElementById('modal');
+			if (modal) {
+				modal.classList.add('active');
+				const input = document.querySelector('#loginForm input');
+				if (input) input.focus();
+			}
+		}
+		
+		hideLogin() {
+			const modal = document.getElementById('modal');
+			if (modal) modal.classList.remove('active');
+			const forms = document.querySelectorAll('.auth-form');
+			forms.forEach(f => f.reset());
+			const msgs = document.querySelectorAll('.error-msg, .success-msg');
+			msgs.forEach(x => x.style.display = 'none');
+		}
+		
+		async doLogin(e) {
+			e.preventDefault();
+			const form = e.target;
+			const btn = form.querySelector('button');
+			const err = document.getElementById('loginErr');
+			
+			if (btn) {
+				btn.disabled = true;
+				btn.textContent = '登录中...';
+			}
+			if (err) err.style.display = 'none';
+			
+			try {
+				const res = await fetch(this.api + '/auth-login', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						email: form.email.value,
+						password: form.pwd.value
+					})
+				});
+				
+				const data = await res.json();
+				
+				if (!res.ok) throw new Error(data.error || '登录失败');
+				
+				this.token = data.token;
+				this.user = data.user;
+				localStorage.setItem('cmt_token', this.token);
+				localStorage.setItem('cmt_user', JSON.stringify(this.user));
+				
+				this.hideLogin();
+				this.init();
+				
+			} catch (errMsg) {
+				if (err) {
+					err.textContent = errMsg.message;
+					err.style.display = 'block';
+				}
+			} finally {
+				if (btn) {
+					btn.disabled = false;
+					btn.textContent = '登录';
+				}
+			}
+			return false;
+		}
+		
+		async doReg(e) {
+			e.preventDefault();
+			const form = e.target;
+			const btn = form.querySelector('button');
+			const err = document.getElementById('regErr');
+			const ok = document.getElementById('regOk');
+			
+			if (btn) {
+				btn.disabled = true;
+				btn.textContent = '注册中...';
+			}
+			if (err) err.style.display = 'none';
+			if (ok) ok.style.display = 'none';
+			
+			try {
+				const res = await fetch(this.api + '/auth-register', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						username: form.name.value,
+						email: form.email.value,
+						password: form.pwd.value
+					})
+				});
+				
+				const data = await res.json();
+				
+				if (!res.ok) throw new Error(data.error || '注册失败');
+				
+				if (ok) {
+					ok.textContent = '✅ 注册成功！自动登录中...';
+					ok.style.display = 'block';
+				}
+				
+				// 自动登录
+				const loginRes = await fetch(this.api + '/auth-login', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						email: form.email.value,
+						password: form.pwd.value
+					})
+				});
+				
+				const loginData = await loginRes.json();
+				
+				if (!loginRes.ok) throw new Error(loginData.error || '自动登录失败');
+				
+				this.token = loginData.token;
+				this.user = loginData.user;
+				localStorage.setItem('cmt_token', this.token);
+				localStorage.setItem('cmt_user', JSON.stringify(this.user));
+				
+				this.hideLogin();
+				this.init();
+				
+			} catch (errMsg) {
+				if (err) {
+					err.textContent = errMsg.message;
+					err.style.display = 'block';
+				}
+			} finally {
+				if (btn) {
+					btn.disabled = false;
+					btn.textContent = '注册';
+				}
+			}
+			return false;
+		}
+		
+		logout() {
+			localStorage.removeItem('cmt_token');
+			localStorage.removeItem('cmt_user');
+			this.token = null;
+			this.user = null;
+			this.init();
+		}
+		
+		async load() {
+			const list = document.getElementById('list');
+			if (!list) return;
+			try {
+				const res = await fetch(this.api + '/comment-list?postId=' + this.postId);
+				const data = await res.json();
+				
+				if (!res.ok) throw new Error(data.error);
+				
+				if (!data.comments || data.comments.length === 0) {
+					list.innerHTML = '<div class="empty">🍃 暂无评论，来抢沙发吧！</div>';
+					return;
+				}
+				
+				list.innerHTML = data.comments.map(c => this.renderComment(c)).join('');
+				
+			} catch (err) {
+				list.innerHTML = '<div class="empty">加载失败：' + this.escapeHtml(err.message) + '</div>';
+			}
+		}
+		
+		renderComment(c, isReply = false) {
+			const time = new Date(c.createdAt).toLocaleString('zh-CN', {
+				month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+			});
+			
+			const replies = !isReply && c.replies && c.replies.length > 0
+				? '<div class="replies">' + c.replies.map(r => this.renderComment(r, true)).join('') + '</div>'
+				: '';
+			
+			const replyBox = !isReply && this.user
+				? `<div class="reply-input" id="rp-${c._id}">
+					<textarea class="reply-textarea" id="rt-${c._id}" placeholder="回复 ${this.escapeHtml(c.authorName)}..."></textarea>
+					<div class="comment-actions">
+						<button class="submit-btn" data-send-reply="${c._id}">发送回复</button>
+					</div>
+				</div>`
+				: '';
+			
+			const actions = !isReply
+				? `<div class="comment-footer">
+					${this.user ? `<span class="comment-action" data-reply="${c._id}">↩️ 回复</span>` : ''}
+					<span class="comment-action">👍 ${c.likes || 0}</span>
+				</div>`
+				: '';
+			
+			return `
+				<div class="${isReply ? 'reply-item' : 'comment-item'}">
+					<img src="${c.authorAvatar}" class="comment-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=default'">
+					<div class="comment-body">
+						<div class="comment-header">
+							<span class="comment-author">${this.escapeHtml(c.authorName)}</span>
+							<span class="comment-time">${time}</span>
+						</div>
+						<div class="comment-content">${this.escapeHtml(c.content)}</div>
+						${actions}
+						${replyBox}
+						${replies}
+					</div>
+				</div>
+			`;
+		}
+		
+		escapeHtml(text) {
+			if (!text) return '';
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+		
+		showReply(id) {
+			const box = document.getElementById('rp-' + id);
+			if (box) {
+				box.classList.toggle('active');
+				if (box.classList.contains('active')) {
+					const textarea = document.getElementById('rt-' + id);
+					if (textarea) setTimeout(() => textarea.focus(), 100);
+				}
+			}
+		}
+		
+		async submit() {
+			const textarea = document.getElementById('mainText');
+			if (!textarea) return;
+			const content = textarea.value.trim();
+			if (!content) return;
+			
+			const btn = this.box.querySelector('[data-action="submit"]');
+			if (btn) {
+				btn.disabled = true;
+				btn.textContent = '发送中...';
+			}
+			
+			try {
+				await this.postComment(content);
+				textarea.value = '';
+				await this.load();
+			} catch (err) {
+				alert('发送失败：' + err.message);
+			} finally {
+				if (btn) {
+					btn.disabled = false;
+					btn.textContent = '🌱 发表评论';
+				}
+			}
+		}
+		
+		async sendReply(parentId) {
+			const textarea = document.getElementById('rt-' + parentId);
+			if (!textarea) return;
+			const content = textarea.value.trim();
+			if (!content) return;
+			
+			try {
+				await this.postComment(content, parentId);
+				const replyBox = document.getElementById('rp-' + parentId);
+				if (replyBox) replyBox.classList.remove('active');
+				await this.load();
+			} catch (err) {
+				alert('发送失败：' + err.message);
+			}
+		}
+		
+		async postComment(content, parentId = null) {
+			if (!this.token) {
+				throw new Error('请先登录');
+			}
+			
+			const res = await fetch(this.api + '/comment-post', { 
+				method: 'POST', 
+				headers: { 
+					'Content-Type': 'application/json', 
+					'Authorization': 'Bearer ' + this.token 
+				},
+				body: JSON.stringify({ content, postId: this.postId, parentId })
+			});
+			  
+			if (res.status === 401) {
+				alert('登录已过期，请重新登录');
+				this.logout();
+				throw new Error('未登录');
+			}
+			
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || '发送失败');
+		}
+	}
+	
+	// 启动应用
+	new CommentSystem('#comments');
+	</script>
 </body>
 </html>
