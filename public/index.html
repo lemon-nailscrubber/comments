@@ -70,13 +70,13 @@
             this.api = '/.netlify/functions';
             this.token = localStorage.getItem('cmt_token');
             this.user = JSON.parse(localStorage.getItem('cmt_user') || 'null');
+            // 绑定方法到实例，这样可以在 HTML onclick 中使用
             this.init();
         }
         
         init() {
             this.render();
             this.load();
-            this.bind();
         }
         
         render() {
@@ -84,23 +84,23 @@
                 <div class="auth-modal" id="modal">
                     <div class="auth-box">
                         <div class="auth-tabs">
-                            <button class="auth-tab active" onclick="app.switchTab('login')">登录</button>
-                            <button class="auth-tab" onclick="app.switchTab('reg')">注册</button>
+                            <button class="auth-tab active" data-tab="login">登录</button>
+                            <button class="auth-tab" data-tab="reg">注册</button>
                         </div>
-                        <form id="loginForm" onsubmit="return app.doLogin(event)">
+                        <form id="loginForm" class="auth-form">
                             <div class="error-msg" id="loginErr"></div>
                             <div class="success-msg" id="loginOk"></div>
                             <input type="email" name="email" placeholder="邮箱" required>
                             <input type="password" name="pwd" placeholder="密码" required>
-                            <button type="submit" id="loginBtn">登录</button>
+                            <button type="submit">登录</button>
                         </form>
-                        <form id="regForm" style="display:none" onsubmit="return app.doReg(event)">
+                        <form id="regForm" class="auth-form" style="display:none">
                             <div class="error-msg" id="regErr"></div>
                             <div class="success-msg" id="regOk"></div>
                             <input type="text" name="name" placeholder="用户名" required minlength="2" maxlength="20">
                             <input type="email" name="email" placeholder="邮箱" required>
                             <input type="password" name="pwd" placeholder="密码（6位以上）" required minlength="6">
-                            <button type="submit" id="regBtn">注册</button>
+                            <button type="submit">注册</button>
                         </form>
                     </div>
                 </div>
@@ -109,57 +109,131 @@
                     ${this.user ? `
                         <div class="user-info">
                             <img src="${this.user.avatar}" class="user-avatar">
-                            <span>${this.user.name}</span>
-                            <button class="logout-btn" onclick="app.logout()">退出</button>
+                            <span>${this.escapeHtml(this.user.name)}</span>
+                            <button class="logout-btn" data-action="logout">退出</button>
                         </div>
                     ` : `
-                        <button class="login-btn" onclick="app.showLogin()">登录 / 注册</button>
+                        <button class="login-btn" data-action="showLogin">登录 / 注册</button>
                     `}
                 </div>
                 <div class="comment-input">
                     <textarea class="comment-textarea" id="mainText" placeholder="${this.user ? '写下你的评论...' : '请先登录后发表评论'}" ${this.user ? '' : 'disabled'}></textarea>
                     <div class="comment-actions">
-                        <button class="submit-btn" onclick="app.submit()" ${this.user ? '' : 'disabled'}>发表评论</button>
+                        <button class="submit-btn" data-action="submit" ${this.user ? '' : 'disabled'}>发表评论</button>
                     </div>
                 </div>
                 <div id="list"><div class="loading">加载中...</div></div>
             `;
-            window.app = this;
+            
+            // 绑定事件（使用事件委托，避免动态元素问题）
+            this.bindEvents();
+        }
+        
+        bindEvents() {
+            // 模态框关闭
+            const modal = document.getElementById('modal');
+            if (modal) {
+                modal.onclick = (e) => {
+                    if (e.target.id === 'modal') this.hideLogin();
+                };
+            }
+            
+            // 标签页切换
+            const tabs = document.querySelectorAll('.auth-tab');
+            tabs.forEach(tab => {
+                tab.onclick = () => this.switchTab(tab.dataset.tab);
+            });
+            
+            // 登录表单
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.onsubmit = (e) => this.doLogin(e);
+            }
+            
+            // 注册表单
+            const regForm = document.getElementById('regForm');
+            if (regForm) {
+                regForm.onsubmit = (e) => this.doReg(e);
+            }
+            
+            // 动态按钮（使用事件委托）
+            this.box.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                
+                const action = btn.dataset.action;
+                switch(action) {
+                    case 'showLogin':
+                        this.showLogin();
+                        break;
+                    case 'logout':
+                        this.logout();
+                        break;
+                    case 'submit':
+                        this.submit();
+                        break;
+                }
+            });
+            
+            // 回复按钮的事件委托
+            this.box.addEventListener('click', (e) => {
+                const replyBtn = e.target.closest('[data-reply]');
+                if (replyBtn) {
+                    const id = replyBtn.dataset.reply;
+                    this.showReply(id);
+                }
+                
+                const sendReplyBtn = e.target.closest('[data-send-reply]');
+                if (sendReplyBtn) {
+                    const id = sendReplyBtn.dataset.sendReply;
+                    this.sendReply(id);
+                }
+            });
         }
         
         switchTab(tab) {
-            document.querySelectorAll('.auth-tab').forEach((x, i) => x.classList.toggle('active', i == (tab == 'login' ? 0 : 1)));
-            document.getElementById('loginForm').style.display = tab == 'login' ? 'block' : 'none';
-            document.getElementById('regForm').style.display = tab == 'reg' ? 'block' : 'none';
-            document.querySelectorAll('.error-msg, .success-msg').forEach(x => x.style.display = 'none');
-        }
-        
-        bind() {
-            document.getElementById('modal').onclick = (e) => {
-                if (e.target.id == 'modal') this.hideLogin();
-            };
+            const tabs = document.querySelectorAll('.auth-tab');
+            tabs.forEach((t, i) => {
+                const isActive = (tab === 'login' && i === 0) || (tab === 'reg' && i === 1);
+                t.classList.toggle('active', isActive);
+            });
+            const loginForm = document.getElementById('loginForm');
+            const regForm = document.getElementById('regForm');
+            if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
+            if (regForm) regForm.style.display = tab === 'reg' ? 'block' : 'none';
+            const errs = document.querySelectorAll('.error-msg, .success-msg');
+            errs.forEach(x => x.style.display = 'none');
         }
         
         showLogin() {
-            document.getElementById('modal').classList.add('active');
-            document.getElementById('loginForm').querySelector('input').focus();
+            const modal = document.getElementById('modal');
+            if (modal) {
+                modal.classList.add('active');
+                const input = document.querySelector('#loginForm input');
+                if (input) input.focus();
+            }
         }
         
         hideLogin() {
-            document.getElementById('modal').classList.remove('active');
-            document.querySelectorAll('.auth-form').forEach(f => f.reset());
-            document.querySelectorAll('.error-msg, .success-msg').forEach(x => x.style.display = 'none');
+            const modal = document.getElementById('modal');
+            if (modal) modal.classList.remove('active');
+            const forms = document.querySelectorAll('.auth-form');
+            forms.forEach(f => f.reset());
+            const msgs = document.querySelectorAll('.error-msg, .success-msg');
+            msgs.forEach(x => x.style.display = 'none');
         }
         
         async doLogin(e) {
             e.preventDefault();
             const form = e.target;
-            const btn = document.getElementById('loginBtn');
+            const btn = form.querySelector('button');
             const err = document.getElementById('loginErr');
             
-            btn.disabled = true;
-            btn.textContent = '登录中...';
-            err.style.display = 'none';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '登录中...';
+            }
+            if (err) err.style.display = 'none';
             
             try {
                 const res = await fetch(this.api + '/auth-login', {
@@ -183,12 +257,16 @@
                 this.hideLogin();
                 this.init();
                 
-            } catch (err) {
-                err.textContent = err.message;
-                err.style.display = 'block';
+            } catch (errMsg) {
+                if (err) {
+                    err.textContent = errMsg.message;
+                    err.style.display = 'block';
+                }
             } finally {
-                btn.disabled = false;
-                btn.textContent = '登录';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '登录';
+                }
             }
             return false;
         }
@@ -196,14 +274,16 @@
         async doReg(e) {
             e.preventDefault();
             const form = e.target;
-            const btn = document.getElementById('regBtn');
+            const btn = form.querySelector('button');
             const err = document.getElementById('regErr');
             const ok = document.getElementById('regOk');
             
-            btn.disabled = true;
-            btn.textContent = '注册中...';
-            err.style.display = 'none';
-            ok.style.display = 'none';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '注册中...';
+            }
+            if (err) err.style.display = 'none';
+            if (ok) ok.style.display = 'none';
             
             try {
                 const res = await fetch(this.api + '/auth-register', {
@@ -220,8 +300,10 @@
                 
                 if (!res.ok) throw new Error(data.error || '注册失败');
                 
-                ok.textContent = '注册成功！自动登录中...';
-                ok.style.display = 'block';
+                if (ok) {
+                    ok.textContent = '注册成功！自动登录中...';
+                    ok.style.display = 'block';
+                }
                 
                 // 自动登录
                 await this.doLogin({
@@ -229,12 +311,16 @@
                     target: { email: { value: form.email.value }, pwd: { value: form.pwd.value } }
                 });
                 
-            } catch (err) {
-                err.textContent = err.message;
-                err.style.display = 'block';
+            } catch (errMsg) {
+                if (err) {
+                    err.textContent = errMsg.message;
+                    err.style.display = 'block';
+                }
             } finally {
-                btn.disabled = false;
-                btn.textContent = '注册';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '注册';
+                }
             }
             return false;
         }
@@ -249,6 +335,7 @@
         
         async load() {
             const list = document.getElementById('list');
+            if (!list) return;
             try {
                 const res = await fetch(this.api + '/comment-list?postId=' + this.postId);
                 const data = await res.json();
@@ -263,7 +350,7 @@
                 list.innerHTML = data.comments.map(c => this.renderComment(c)).join('');
                 
             } catch (err) {
-                list.innerHTML = '<div class="empty">加载失败：' + err.message + '</div>';
+                list.innerHTML = '<div class="empty">加载失败：' + this.escapeHtml(err.message) + '</div>';
             }
         }
         
@@ -278,16 +365,16 @@
             
             const replyBox = !isReply && this.user
                 ? `<div class="reply-input" id="rp-${c._id}">
-                    <textarea class="reply-textarea" id="rt-${c._id}" placeholder="回复 ${c.authorName}..."></textarea>
+                    <textarea class="reply-textarea" id="rt-${c._id}" placeholder="回复 ${this.escapeHtml(c.authorName)}..."></textarea>
                     <div class="comment-actions">
-                        <button class="submit-btn" onclick="app.sendReply('${c._id}')">发送回复</button>
+                        <button class="submit-btn" data-send-reply="${c._id}">发送回复</button>
                     </div>
                 </div>`
                 : '';
             
             const actions = !isReply
                 ? `<div class="comment-footer">
-                    ${this.user ? `<span class="comment-action" onclick="app.showReply('${c._id}')">↩️ 回复</span>` : ''}
+                    ${this.user ? `<span class="comment-action" data-reply="${c._id}">↩️ 回复</span>` : ''}
                     <span class="comment-action">👍 ${c.likes || 0}</span>
                 </div>`
                 : '';
@@ -297,7 +384,7 @@
                     <img src="${c.authorAvatar}" class="comment-avatar">
                     <div class="comment-body">
                         <div class="comment-header">
-                            <span class="comment-author">${c.authorName}</span>
+                            <span class="comment-author">${this.escapeHtml(c.authorName)}</span>
                             <span class="comment-time">${time}</span>
                         </div>
                         <div class="comment-content">${this.escapeHtml(c.content)}</div>
@@ -310,6 +397,7 @@
         }
         
         escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -320,38 +408,48 @@
             if (box) {
                 box.classList.toggle('active');
                 if (box.classList.contains('active')) {
-                    setTimeout(() => document.getElementById('rt-' + id).focus(), 100);
+                    const textarea = document.getElementById('rt-' + id);
+                    if (textarea) setTimeout(() => textarea.focus(), 100);
                 }
             }
         }
         
         async submit() {
             const textarea = document.getElementById('mainText');
+            if (!textarea) return;
             const content = textarea.value.trim();
             if (!content) return;
             
-            const btn = document.querySelector('.submit-btn');
-            btn.disabled = true;
-            btn.textContent = '发送中...';
+            const btn = this.box.querySelector('[data-action="submit"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '发送中...';
+            }
             
             try {
                 await this.postComment(content);
                 textarea.value = '';
                 await this.load();
+            } catch (err) {
+                alert('发送失败：' + err.message);
             } finally {
-                btn.disabled = false;
-                btn.textContent = '发表评论';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '发表评论';
+                }
             }
         }
         
         async sendReply(parentId) {
             const textarea = document.getElementById('rt-' + parentId);
+            if (!textarea) return;
             const content = textarea.value.trim();
             if (!content) return;
             
             try {
                 await this.postComment(content, parentId);
-                document.getElementById('rp-' + parentId).classList.remove('active');
+                const replyBox = document.getElementById('rp-' + parentId);
+                if (replyBox) replyBox.classList.remove('active');
                 await this.load();
             } catch (err) {
                 alert('发送失败：' + err.message);
@@ -359,19 +457,19 @@
         }
         
         async postComment(content, parentId = null) {
-            const res = await fetch(this.api + '/comment-post', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + this.token
-                },
-                body: JSON.stringify({
-                    content,
-                    postId: this.postId,
-                    parentId
-                })
-            });
+            if (!this.token) {
+                throw new Error('请先登录');
+            }
             
+            const res = await fetch(this.api + '/comment-post', { 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': 'Bearer ' + this.token 
+                },
+                body: JSON.stringify({ content, postId: this.postId, parentId })
+            });
+              
             if (res.status === 401) {
                 alert('登录已过期，请重新登录');
                 this.logout();
@@ -383,6 +481,7 @@
         }
     }
     
+    // 启动应用
     new CommentSystem('#comments');
     </script>
 </body>
