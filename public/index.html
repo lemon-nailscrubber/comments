@@ -447,6 +447,67 @@
 			color: #666;
 		}
 
+		/* 自定义URL输入框样式 - 更醒目 */
+		.custom-url-section {
+			margin-top: 20px;
+			padding: 15px;
+			background: #f0f8f0;
+			border-radius: 8px;
+			border: 2px dashed var(--light-spring);
+		}
+
+		.custom-url-section label {
+			display: block;
+			margin-bottom: 8px;
+			font-weight: 600;
+			color: var(--theme);
+		}
+
+		.custom-url-section input {
+			width: 100%;
+			padding: 12px;
+			border: 2px solid var(--spring);
+			border-radius: 6px;
+			font-size: 14px;
+			background: white;
+		}
+
+		.custom-url-section input:focus {
+			outline: none;
+			border-color: var(--theme);
+			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+		}
+
+		.custom-url-hint {
+			font-size: 12px;
+			color: #666;
+			margin-top: 5px;
+		}
+
+		.divider {
+			text-align: center;
+			margin: 20px 0;
+			position: relative;
+		}
+
+		.divider::before {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 0;
+			right: 0;
+			height: 1px;
+			background: #E8F5E9;
+		}
+
+		.divider span {
+			background: white;
+			padding: 0 15px;
+			color: #999;
+			font-size: 13px;
+			position: relative;
+		}
+
 		@media (max-width: 600px) {
 			body {
 				padding: 12px;
@@ -581,6 +642,25 @@
 			.empty, .loading {
 				color: #8A9A8A;
 			}
+
+			.custom-url-section {
+				background: #1B2A1B;
+				border-color: #2E7D32;
+			}
+
+			.custom-url-section label {
+				color: #81C784;
+			}
+
+			.custom-url-section input {
+				background: #0F1F0F;
+				border-color: #4CAF50;
+				color: #E8F5E9;
+			}
+
+			.divider span {
+				background: #0F1F0F;
+			}
 		}
 	</style>
 </head>
@@ -588,7 +668,7 @@
 	<article class="blog-post">
 		<h1>🌱 测试文章</h1><p><small>公测版，比地铁系统bug还多。暂不支持撤回😅，反应非常非常慢，另外有小概率bug一次会发出3条。头像不咋好看。</small></p>
 	</article>
-	
+
 	<div id="comments" class="comment-system" data-post-id="demo-post-001"></div>
 
 	<script>
@@ -602,14 +682,16 @@
 			this.token = localStorage.getItem('cmt_token');
 			this.user = JSON.parse(localStorage.getItem('cmt_user') || 'null');
 			this.avatarStyles = ['avataaars', 'bottts', 'identicon', 'micah', 'open-peeps', 'lorelei', 'fun-emoji', 'thumbs', 'pixel-art'];
+			// 当前选中的头像样式（用于预览）
+			this._selectedAvatarStyle = null;
 			this.init();
 		}
-		
+
 		init() {
 			this.render();
 			this.load();
 		}
-		
+
 		render() {
 			this.box.innerHTML = `
 				<div class="auth-modal" id="modal">
@@ -633,8 +715,14 @@
 							<input type="email" name="email" placeholder="邮箱" required>
 							<input type="password" name="pwd" placeholder="密码（6位以上）" required minlength="6">
 							<div class="avatar-selector">
-								<label>选择头像风格（可选）</label>
+								<label>选择头像风格（可选，默认使用奇怪风）</label>
 								<div class="avatar-styles" id="regAvatarStyles"></div>
+							</div>
+							<!-- 注册时也支持自定义URL -->
+							<div class="custom-url-section">
+								<label>🖼️ 或使用自定义头像图片URL（优先）</label>
+								<input type="url" id="regCustomAvatarUrl" placeholder="https://example.com/my-avatar.png">
+								<p class="custom-url-hint">支持 .jpg, .png, .gif 等格式，输入后会覆盖上方选择的风格</p>
 							</div>
 							<button type="submit">注册</button>
 						</form>
@@ -645,18 +733,20 @@
 								<img id="settingsAvatarPreview" src="${this.user?.avatar || ''}">
 								<div>
 									<strong>当前头像</strong>
-									<p style="font-size:12px; color:#666;">点击下方样式更换头像</p>
+									<p style="font-size:12px; color:#666;">点击下方样式更换，或输入自定义图片链接</p>
 								</div>
 							</div>
 							<div class="avatar-selector">
-								<label>选择新头像风格</label>
+								<label>🎨 选择新头像风格</label>
 								<div class="avatar-styles" id="settingsAvatarStyles"></div>
 							</div>
-							<div class="avatar-selector">
-								<label>或输入自定义头像URL</label>
-								<input type="url" id="customAvatarUrl" placeholder="https://example.com/avatar.jpg">
+							<div class="divider"><span>或者</span></div>
+							<div class="custom-url-section">
+								<label>🖼️ 使用自定义头像图片URL（优先使用）</label>
+								<input type="url" id="customAvatarUrl" placeholder="https://example.com/my-avatar.png">
+								<p class="custom-url-hint">支持 .jpg, .png, .gif, .webp 等格式，输入后会覆盖上方选择的风格</p>
 							</div>
-							<button type="button" id="updateAvatarBtn">更新头像</button>
+							<button type="button" id="updateAvatarBtn">💾 保存头像设置</button>
 						</div>
 					</div>
 				</div>
@@ -664,7 +754,7 @@
 					<span class="comments-count">💬 评论</span>
 					${this.user ? `
 						<div class="user-info">
-							<img src="${this.user.avatar}" class="user-avatar" data-action="showSettings" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=default'">
+							<img src="${this.user.avatar}" class="user-avatar" data-action="showSettings" onerror="this.src='https://api.dicebear.com/7.x/pixel-art/svg?seed=default'" title="点击更换头像">
 							<span>${this.escapeHtml(this.user.name)}</span>
 							<button class="logout-btn" data-action="logout">退出</button>
 						</div>
@@ -680,88 +770,132 @@
 				</div>
 				<div id="list"><div class="loading">加载中...</div></div>
 			`;
-			
+
 			this.bindEvents();
 			this.renderAvatarOptions();
 		}
-		
+
 		renderAvatarOptions() {
-			// 注册页面的头像选项
+			// 注册页面的头像选项 - 统一使用 7.x 版本
 			const regContainer = document.getElementById('regAvatarStyles');
 			if (regContainer) {
 				regContainer.innerHTML = this.avatarStyles.map(style => `
-					<div class="avatar-option" data-avatar-style="${style}">
+					<div class="avatar-option ${style === 'identicon' ? 'selected' : ''}" data-avatar-style="${style}">
 						<img src="https://api.dicebear.com/7.x/${style}/svg?seed=demo&backgroundColor=b6e3f4">
 						<span>${style}</span>
 					</div>
 				`).join('');
-				
+
 				regContainer.querySelectorAll('.avatar-option').forEach(opt => {
 					opt.onclick = () => {
 						regContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 						opt.classList.add('selected');
+						// 清除自定义URL
+						const customUrlInput = document.getElementById('regCustomAvatarUrl');
+						if (customUrlInput) customUrlInput.value = '';
 					};
 				});
 			}
-			
-			// 设置页面的头像选项
+
+			// 设置页面的头像选项 - 统一使用 7.x 版本
 			const settingsContainer = document.getElementById('settingsAvatarStyles');
 			if (settingsContainer && this.user) {
 				settingsContainer.innerHTML = this.avatarStyles.map(style => `
 					<div class="avatar-option" data-settings-style="${style}">
-						<img src="https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4">
+						<img src="https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4">
 						<span>${style}</span>
 					</div>
 				`).join('');
-				
+
 				settingsContainer.querySelectorAll('.avatar-option').forEach(opt => {
 					opt.onclick = () => {
+						// 清除之前的选中状态
 						settingsContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 						opt.classList.add('selected');
-						// 预览效果
+
+						// 获取选中的样式
 						const style = opt.dataset.settingsStyle;
+						this._selectedAvatarStyle = style;
+
+						// 更新预览 - 使用 7.x 版本
 						const preview = document.getElementById('settingsAvatarPreview');
 						if (preview) {
 							preview.src = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4`;
 						}
+
+						// 清除自定义URL输入，避免冲突
+						const customUrlInput = document.getElementById('customAvatarUrl');
+						if (customUrlInput) {
+							customUrlInput.value = '';
+						}
 					};
+				});
+
+				// 监听自定义URL输入，清除样式选择
+				const customUrlInput = document.getElementById('customAvatarUrl');
+				if (customUrlInput) {
+					customUrlInput.addEventListener('input', (e) => {
+						if (e.target.value.trim()) {
+							// 如果有输入URL，清除样式选择
+							settingsContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+							this._selectedAvatarStyle = null;
+							// 更新预览为自定义URL
+							const preview = document.getElementById('settingsAvatarPreview');
+							if (preview) {
+								preview.src = e.target.value.trim();
+							}
+						}
+					});
+				}
+			}
+
+			// 注册页面的自定义URL监听
+			const regCustomUrlInput = document.getElementById('regCustomAvatarUrl');
+			if (regCustomUrlInput) {
+				regCustomUrlInput.addEventListener('input', (e) => {
+					if (e.target.value.trim()) {
+						// 清除样式选择
+						if (regContainer) {
+							regContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+						}
+					}
 				});
 			}
 		}
-		
+
 		bindEvents() {
 			// 移除旧的事件监听器（通过 clone + replace 方式彻底清理）
 			const oldBox = this.box;
 			const newBox = oldBox.cloneNode(true);
 			oldBox.parentNode.replaceChild(newBox, oldBox);
 			this.box = newBox;
-			
+
 			// 重新获取需要绑定的元素
 			const modal = document.getElementById('modal');
 			if (modal) {
 				modal.onclick = (e) => { if (e.target.id === 'modal') this.hideLogin(); };
 			}
-			
+
 			const tabs = document.querySelectorAll('.auth-tab');
 			tabs.forEach(tab => {
 				tab.onclick = () => this.switchTab(tab.dataset.tab);
 			});
-			
+
 			const loginForm = document.getElementById('loginForm');
 			if (loginForm) {
 				loginForm.onsubmit = (e) => this.doLogin(e);
 			}
-			
+
 			const regForm = document.getElementById('regForm');
 			if (regForm) {
 				regForm.onsubmit = (e) => this.doReg(e);
 			}
-			
+
 			const updateBtn = document.getElementById('updateAvatarBtn');
 			if (updateBtn) {
 				updateBtn.onclick = () => this.updateAvatar();
 			}
-			
+
 			// 使用事件委托，避免重复绑定
 			if (!this._delegationBound) {
 				this.box.addEventListener('click', (e) => {
@@ -772,17 +906,17 @@
 						if (btn.dataset.action === 'logout') this.logout();
 						if (btn.dataset.action === 'submit') this.submit();
 					}
-					
+
 					const replyBtn = e.target.closest('[data-reply]');
 					if (replyBtn) this.showReply(replyBtn.dataset.reply);
-					
+
 					const sendBtn = e.target.closest('[data-send-reply]');
 					if (sendBtn) this.sendReply(sendBtn.dataset.sendReply);
 				});
 				this._delegationBound = true;
 			}
 		}
-		
+
 		switchTab(tab) {
 			const tabs = document.querySelectorAll('.auth-tab');
 			tabs.forEach((t, i) => {
@@ -792,26 +926,36 @@
 			const loginForm = document.getElementById('loginForm');
 			const regForm = document.getElementById('regForm');
 			const settingsForm = document.getElementById('settingsForm');
-			
+
 			if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
 			if (regForm) regForm.style.display = tab === 'reg' ? 'block' : 'none';
 			if (settingsForm) settingsForm.style.display = tab === 'settings' ? 'block' : 'none';
-			
+
 			const errs = document.querySelectorAll('.error-msg, .success-msg');
 			errs.forEach(x => x.style.display = 'none');
-			
+
 			if (tab === 'settings' && this.user) {
 				this.refreshSettingsPreview();
 			}
 		}
-		
+
 		refreshSettingsPreview() {
 			const preview = document.getElementById('settingsAvatarPreview');
 			if (preview && this.user) {
 				preview.src = this.user.avatar;
 			}
+			// 重置选择状态
+			this._selectedAvatarStyle = null;
+			const settingsContainer = document.getElementById('settingsAvatarStyles');
+			if (settingsContainer) {
+				settingsContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+			}
+			const customUrlInput = document.getElementById('customAvatarUrl');
+			if (customUrlInput) {
+				customUrlInput.value = '';
+			}
 		}
-		
+
 		showLogin() {
 			const modal = document.getElementById('modal');
 			if (modal) {
@@ -821,7 +965,7 @@
 				if (input) input.focus();
 			}
 		}
-		
+
 		showSettings() {
 			const modal = document.getElementById('modal');
 			if (modal && this.user) {
@@ -831,7 +975,7 @@
 				this.renderAvatarOptions();
 			}
 		}
-		
+
 		hideLogin() {
 			const modal = document.getElementById('modal');
 			if (modal) modal.classList.remove('active');
@@ -842,29 +986,42 @@
 			const msgs = document.querySelectorAll('.error-msg, .success-msg');
 			msgs.forEach(x => x.style.display = 'none');
 		}
-		
+
 		async updateAvatar() {
 			const settingsErr = document.getElementById('settingsErr');
 			const settingsOk = document.getElementById('settingsOk');
-			const customUrl = document.getElementById('customAvatarUrl')?.value;
-			const selectedStyle = document.querySelector('#settingsAvatarStyles .avatar-option.selected')?.dataset.settingsStyle;
-			
-			if (!customUrl && !selectedStyle) {
+			const customUrl = document.getElementById('customAvatarUrl')?.value?.trim();
+
+			// 优先使用自定义URL，如果没有则使用选中的样式
+			let avatarStyle = null;
+			let finalAvatar = null;
+
+			if (customUrl) {
+				// 优先使用自定义URL
+				finalAvatar = customUrl;
+				avatarStyle = 'custom';
+			} else if (this._selectedAvatarStyle) {
+				// 使用选中的样式生成头像
+				avatarStyle = this._selectedAvatarStyle;
+				finalAvatar = `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4`;
+			}
+
+			if (!finalAvatar) {
 				if (settingsErr) {
 					settingsErr.textContent = '请选择头像样式或输入自定义URL';
 					settingsErr.style.display = 'block';
 				}
 				return;
 			}
-			
+
 			const updateBtn = document.getElementById('updateAvatarBtn');
 			if (updateBtn) {
 				updateBtn.disabled = true;
-				updateBtn.textContent = '更新中...';
+				updateBtn.textContent = '保存中...';
 			}
 			if (settingsErr) settingsErr.style.display = 'none';
 			if (settingsOk) settingsOk.style.display = 'none';
-			
+
 			try {
 				const res = await fetch(this.api + '/auth-update-avatar', {
 					method: 'POST',
@@ -873,31 +1030,31 @@
 						'Authorization': 'Bearer ' + this.token
 					},
 					body: JSON.stringify({
-						avatarStyle: selectedStyle,
-						customAvatarUrl: customUrl
+						avatarStyle: avatarStyle,
+						customAvatarUrl: customUrl || null
 					})
 				});
-				
+
 				const data = await res.json();
-				
+
 				if (!res.ok) throw new Error(data.error || '更新失败');
-				
+
 				// 更新本地用户信息
 				this.user.avatar = data.avatar;
 				localStorage.setItem('cmt_user', JSON.stringify(this.user));
-				
+
 				if (settingsOk) {
 					settingsOk.textContent = '✅ 头像更新成功！';
 					settingsOk.style.display = 'block';
 				}
-				
+
 				// 刷新界面
 				this.init();
-				
+
 				setTimeout(() => {
 					this.hideLogin();
 				}, 1500);
-				
+
 			} catch (errMsg) {
 				if (settingsErr) {
 					settingsErr.textContent = errMsg.message;
@@ -906,23 +1063,23 @@
 			} finally {
 				if (updateBtn) {
 					updateBtn.disabled = false;
-					updateBtn.textContent = '更新头像';
+					updateBtn.textContent = '💾 保存头像设置';
 				}
 			}
 		}
-		
+
 		async doLogin(e) {
 			e.preventDefault();
 			const form = e.target;
 			const btn = form.querySelector('button');
 			const err = document.getElementById('loginErr');
-			
+
 			if (btn) {
 				btn.disabled = true;
 				btn.textContent = '登录中...';
 			}
 			if (err) err.style.display = 'none';
-			
+
 			try {
 				const res = await fetch(this.api + '/auth-login', {
 					method: 'POST',
@@ -932,19 +1089,19 @@
 						password: form.pwd.value
 					})
 				});
-				
+
 				const data = await res.json();
-				
+
 				if (!res.ok) throw new Error(data.error || '登录失败');
-				
+
 				this.token = data.token;
 				this.user = data.user;
 				localStorage.setItem('cmt_token', this.token);
 				localStorage.setItem('cmt_user', JSON.stringify(this.user));
-				
+
 				this.hideLogin();
 				this.init();
-				
+
 			} catch (errMsg) {
 				if (err) {
 					err.textContent = errMsg.message;
@@ -958,24 +1115,36 @@
 			}
 			return false;
 		}
-		
+
 		async doReg(e) {
 			e.preventDefault();
 			const form = e.target;
 			const btn = form.querySelector('button');
 			const err = document.getElementById('regErr');
 			const ok = document.getElementById('regOk');
-			
+
 			// 获取选中的头像样式
 			const selectedStyle = document.querySelector('#regAvatarStyles .avatar-option.selected')?.dataset.avatarStyle;
-			
+			// 获取自定义URL（优先使用）
+			const customUrl = document.getElementById('regCustomAvatarUrl')?.value?.trim();
+
+			// 确定最终使用的头像
+			let avatarStyle = selectedStyle || 'pixel-art';
+			let finalAvatarUrl = null;
+
+			if (customUrl) {
+				// 优先使用自定义URL
+				finalAvatarUrl = customUrl;
+				avatarStyle = 'custom';
+			}
+
 			if (btn) {
 				btn.disabled = true;
 				btn.textContent = '注册中...';
 			}
 			if (err) err.style.display = 'none';
 			if (ok) ok.style.display = 'none';
-			
+
 			try {
 				const res = await fetch(this.api + '/auth-register', {
 					method: 'POST',
@@ -984,19 +1153,20 @@
 						username: form.name.value,
 						email: form.email.value,
 						password: form.pwd.value,
-						avatarStyle: selectedStyle || 'avataaars'
+						avatarStyle: avatarStyle,
+						customAvatarUrl: customUrl || null
 					})
 				});
-				
+
 				const data = await res.json();
-				
+
 				if (!res.ok) throw new Error(data.error || '注册失败');
-				
+
 				if (ok) {
 					ok.textContent = '✅ 注册成功！自动登录中...';
 					ok.style.display = 'block';
 				}
-				
+
 				// 自动登录
 				const loginRes = await fetch(this.api + '/auth-login', {
 					method: 'POST',
@@ -1006,19 +1176,19 @@
 						password: form.pwd.value
 					})
 				});
-				
+
 				const loginData = await loginRes.json();
-				
+
 				if (!loginRes.ok) throw new Error(loginData.error || '自动登录失败');
-				
+
 				this.token = loginData.token;
 				this.user = loginData.user;
 				localStorage.setItem('cmt_token', this.token);
 				localStorage.setItem('cmt_user', JSON.stringify(this.user));
-				
+
 				this.hideLogin();
 				this.init();
-				
+
 			} catch (errMsg) {
 				if (err) {
 					err.textContent = errMsg.message;
@@ -1032,7 +1202,7 @@
 			}
 			return false;
 		}
-		
+
 		logout() {
 			localStorage.removeItem('cmt_token');
 			localStorage.removeItem('cmt_user');
@@ -1040,37 +1210,37 @@
 			this.user = null;
 			this.init();
 		}
-		
+
 		async load() {
 			const list = document.getElementById('list');
 			if (!list) return;
 			try {
 				const res = await fetch(this.api + '/comment-list?postId=' + this.postId);
 				const data = await res.json();
-				
+
 				if (!res.ok) throw new Error(data.error);
-				
+
 				if (!data.comments || data.comments.length === 0) {
 					list.innerHTML = '<div class="empty">🍃 暂无评论，来抢沙发吧！</div>';
 					return;
 				}
-				
+
 				list.innerHTML = data.comments.map(c => this.renderComment(c)).join('');
-				
+
 			} catch (err) {
 				list.innerHTML = '<div class="empty">加载失败：' + this.escapeHtml(err.message) + '</div>';
 			}
 		}
-		
+
 		renderComment(c, isReply = false) {
 			const time = new Date(c.createdAt).toLocaleString('zh-CN', {
 				month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
 			});
-			
+
 			const replies = !isReply && c.replies && c.replies.length > 0
 				? '<div class="replies">' + c.replies.map(r => this.renderComment(r, true)).join('') + '</div>'
 				: '';
-			
+
 			const replyBox = !isReply && this.user
 				? `<div class="reply-input" id="rp-${c._id}">
 					<textarea class="reply-textarea" id="rt-${c._id}" placeholder="回复 ${this.escapeHtml(c.authorName)}..."></textarea>
@@ -1079,17 +1249,17 @@
 					</div>
 				</div>`
 				: '';
-			
+
 			const actions = !isReply
 				? `<div class="comment-footer">
 					${this.user ? `<span class="comment-action" data-reply="${c._id}">↩️ 回复</span>` : ''}
 					<span class="comment-action">👍 ${c.likes || 0}</span>
 				</div>`
 				: '';
-			
+
 			return `
 				<div class="${isReply ? 'reply-item' : 'comment-item'}">
-					<img src="${c.authorAvatar}" class="comment-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=default'">
+					<img src="${c.authorAvatar}" class="comment-avatar" onerror="this.src='https://api.dicebear.com/7.x/pixel-art/svg?seed=default'">
 					<div class="comment-body">
 						<div class="comment-header">
 							<span class="comment-author">${this.escapeHtml(c.authorName)}</span>
@@ -1103,14 +1273,14 @@
 				</div>
 			`;
 		}
-		
+
 		escapeHtml(text) {
 			if (!text) return '';
 			const div = document.createElement('div');
 			div.textContent = text;
 			return div.innerHTML;
 		}
-		
+
 		showReply(id) {
 			const box = document.getElementById('rp-' + id);
 			if (box) {
@@ -1121,19 +1291,19 @@
 				}
 			}
 		}
-		
+
 		async submit() {
 			const textarea = document.getElementById('mainText');
 			if (!textarea) return;
 			const content = textarea.value.trim();
 			if (!content) return;
-			
+
 			const btn = this.box.querySelector('[data-action="submit"]');
 			if (btn) {
 				btn.disabled = true;
 				btn.textContent = '发送中...';
 			}
-			
+
 			try {
 				await this.postComment(content);
 				textarea.value = '';
@@ -1147,13 +1317,13 @@
 				}
 			}
 		}
-		
+
 		async sendReply(parentId) {
 			const textarea = document.getElementById('rt-' + parentId);
 			if (!textarea) return;
 			const content = textarea.value.trim();
 			if (!content) return;
-			
+
 			try {
 				await this.postComment(content, parentId);
 				const replyBox = document.getElementById('rp-' + parentId);
@@ -1163,12 +1333,12 @@
 				alert('发送失败：' + err.message);
 			}
 		}
-		
+
 		async postComment(content, parentId = null) {
 			if (!this.token) {
 				throw new Error('请先登录');
 			}
-			
+
 			const res = await fetch(this.api + '/comment-post', { 
 				method: 'POST', 
 				headers: { 
@@ -1177,18 +1347,18 @@
 				},
 				body: JSON.stringify({ content, postId: this.postId, parentId })
 			});
-			  
+
 			if (res.status === 401) {
 				alert('登录已过期，请重新登录');
 				this.logout();
 				throw new Error('未登录');
 			}
-			
+
 			const data = await res.json();
 			if (!res.ok) throw new Error(data.error || '发送失败');
 		}
 	}
-	
+
 	// 启动应用
 	new CommentSystem('#comments');
 	</script>
