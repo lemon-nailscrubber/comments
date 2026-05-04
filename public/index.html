@@ -234,11 +234,29 @@
 		.comment-action {
 			cursor: pointer;
 			user-select: none;
-			transition: color 0.2s;
+			transition: all 0.2s;
+			display: flex;
+			align-items: center;
+			gap: 4px;
 		}
 
 		.comment-action:hover {
 			color: var(--spring);
+		}
+
+		/* 修复：添加已点赞状态的样式 */
+		.comment-action.liked {
+			color: #e91e63;
+			font-weight: 600;
+		}
+
+		.comment-action.liked:hover {
+			color: #c2185b;
+		}
+
+		.comment-action.processing {
+			opacity: 0.6;
+			pointer-events: none;
 		}
 
 		.replies {
@@ -597,6 +615,10 @@
 				color: #8A9A8A;
 			}
 
+			.comment-action.liked {
+				color: #f48fb1;
+			}
+
 			.replies {
 				border-left-color: #2E7D32;
 			}
@@ -681,9 +703,12 @@
 			this._delegationBound = false;
 			this.token = localStorage.getItem('cmt_token');
 			this.user = JSON.parse(localStorage.getItem('cmt_user') || 'null');
-			this.avatarStyles = ['avataaars', 'bottts', 'identicon', 'micah', 'open-peeps', 'lorelei', 'fun-emoji', 'thumbs', 'pixel-art'];
-			// 当前选中的头像样式（用于预览）
-			this._selectedAvatarStyle = null;
+			this.avatarStyles = ['avataaars', 'bottts', 'identicon', 'micah', 'open-peeps', 'lorelei', 'fun-emoji', 'thumbs', 'pixel-art', 'notionists', 'adventurer', 'big-smile'];
+			this.defaultAvatarStyle = 'identicon';
+			this._selectedAvatarStyle = this.defaultAvatarStyle;
+			this.dicebearVersion = '9.x';
+			// 修复：存储已点赞的评论ID，避免重复点赞
+			this.likedComments = new Set();
 			this.init();
 		}
 
@@ -715,10 +740,9 @@
 							<input type="email" name="email" placeholder="邮箱" required>
 							<input type="password" name="pwd" placeholder="密码（6位以上）" required minlength="6">
 							<div class="avatar-selector">
-								<label>选择头像风格（可选，默认使用奇怪风）</label>
+								<label>选择头像风格（默认: ${this.defaultAvatarStyle}）</label>
 								<div class="avatar-styles" id="regAvatarStyles"></div>
 							</div>
-							<!-- 注册时也支持自定义URL -->
 							<div class="custom-url-section">
 								<label>🖼️ 或使用自定义头像图片URL（优先）</label>
 								<input type="url" id="regCustomAvatarUrl" placeholder="https://example.com/my-avatar.png">
@@ -754,7 +778,7 @@
 					<span class="comments-count">💬 评论</span>
 					${this.user ? `
 						<div class="user-info">
-							<img src="${this.user.avatar}" class="user-avatar" data-action="showSettings" onerror="this.src='https://api.dicebear.com/7.x/pixel-art/svg?seed=default'" title="点击更换头像">
+							<img src="${this.user.avatar}" class="user-avatar" data-action="showSettings" onerror="this.src='https://api.dicebear.com/${this.dicebearVersion}/pixel-art/svg?seed=default'" title="点击更换头像">
 							<span>${this.escapeHtml(this.user.name)}</span>
 							<button class="logout-btn" data-action="logout">退出</button>
 						</div>
@@ -763,7 +787,7 @@
 					`}
 				</div>
 				<div class="comment-input">
-					<textarea class="comment-textarea" id="mainText" placeholder="${this.user ? '写下你的评论...' : '请先登录后发表评论'}" ${this.user ? '' : 'disabled'}></textarea>
+					<textarea class="comment-textarea" id="mainText" maxlength="5000" placeholder="${this.user ? '写下你的评论...' : '请先登录后发表评论'}" ${this.user ? '' : 'disabled'}></textarea>
 					<div class="comment-actions">
 						<button class="submit-btn" data-action="submit" ${this.user ? '' : 'disabled'}>🌱 发表评论</button>
 					</div>
@@ -775,13 +799,20 @@
 			this.renderAvatarOptions();
 		}
 
+		getAvatarUrl(style, seed, backgroundColor = 'b6e3f4') {
+			return `https://api.dicebear.com/${this.dicebearVersion}/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${backgroundColor}`;
+		}
+
 		renderAvatarOptions() {
-			// 注册页面的头像选项 - 统一使用 7.x 版本
 			const regContainer = document.getElementById('regAvatarStyles');
 			if (regContainer) {
 				regContainer.innerHTML = this.avatarStyles.map(style => `
-					<div class="avatar-option ${style === 'identicon' ? 'selected' : ''}" data-avatar-style="${style}">
-						<img src="https://api.dicebear.com/7.x/${style}/svg?seed=demo&backgroundColor=b6e3f4">
+					<div class="avatar-option ${style === this.defaultAvatarStyle ? 'selected' : ''}" 
+						 data-avatar-style="${style}"
+						 data-style-name="${style}">
+						<img src="${this.getAvatarUrl(style, 'demo')}" 
+							 alt="${style}"
+							 loading="lazy">
 						<span>${style}</span>
 					</div>
 				`).join('');
@@ -790,130 +821,169 @@
 					opt.onclick = () => {
 						regContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 						opt.classList.add('selected');
-						// 清除自定义URL
+						this._selectedAvatarStyle = opt.dataset.avatarStyle;
+						console.log('选中头像风格:', this._selectedAvatarStyle);
+						
 						const customUrlInput = document.getElementById('regCustomAvatarUrl');
 						if (customUrlInput) customUrlInput.value = '';
 					};
 				});
 			}
 
-			// 设置页面的头像选项 - 统一使用 7.x 版本
 			const settingsContainer = document.getElementById('settingsAvatarStyles');
 			if (settingsContainer && this.user) {
 				settingsContainer.innerHTML = this.avatarStyles.map(style => `
 					<div class="avatar-option" data-settings-style="${style}">
-						<img src="https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4">
+						<img src="${this.getAvatarUrl(style, this.user.name)}" 
+							 alt="${style}"
+							 loading="lazy">
 						<span>${style}</span>
 					</div>
 				`).join('');
 
 				settingsContainer.querySelectorAll('.avatar-option').forEach(opt => {
 					opt.onclick = () => {
-						// 清除之前的选中状态
 						settingsContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 						opt.classList.add('selected');
 
-						// 获取选中的样式
 						const style = opt.dataset.settingsStyle;
 						this._selectedAvatarStyle = style;
 
-						// 更新预览 - 使用 7.x 版本
 						const preview = document.getElementById('settingsAvatarPreview');
 						if (preview) {
-							preview.src = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4`;
+							preview.src = this.getAvatarUrl(style, this.user.name);
 						}
 
-						// 清除自定义URL输入，避免冲突
 						const customUrlInput = document.getElementById('customAvatarUrl');
-						if (customUrlInput) {
-							customUrlInput.value = '';
-						}
+						if (customUrlInput) customUrlInput.value = '';
 					};
 				});
 
-				// 监听自定义URL输入，清除样式选择
 				const customUrlInput = document.getElementById('customAvatarUrl');
 				if (customUrlInput) {
 					customUrlInput.addEventListener('input', (e) => {
 						if (e.target.value.trim()) {
-							// 如果有输入URL，清除样式选择
 							settingsContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 							this._selectedAvatarStyle = null;
-							// 更新预览为自定义URL
 							const preview = document.getElementById('settingsAvatarPreview');
-							if (preview) {
-								preview.src = e.target.value.trim();
-							}
+							if (preview) preview.src = e.target.value.trim();
 						}
 					});
 				}
 			}
 
-			// 注册页面的自定义URL监听
 			const regCustomUrlInput = document.getElementById('regCustomAvatarUrl');
 			if (regCustomUrlInput) {
 				regCustomUrlInput.addEventListener('input', (e) => {
 					if (e.target.value.trim()) {
-						// 清除样式选择
 						if (regContainer) {
 							regContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 						}
+						this._selectedAvatarStyle = null;
 					}
 				});
 			}
 		}
 
-		bindEvents() {
-			// 移除旧的事件监听器（通过 clone + replace 方式彻底清理）
-			const oldBox = this.box;
-			const newBox = oldBox.cloneNode(true);
-			oldBox.parentNode.replaceChild(newBox, oldBox);
-			this.box = newBox;
+bindEvents() {
+  // 不再 cloneNode，直接重新获取引用
+  this.box = document.querySelector('#comments');
 
-			// 重新获取需要绑定的元素
-			const modal = document.getElementById('modal');
-			if (modal) {
-				modal.onclick = (e) => { if (e.target.id === 'modal') this.hideLogin(); };
+  const modal = document.getElementById('modal');
+  if (modal) {
+	modal.onclick = (e) => { if (e.target.id === 'modal') this.hideLogin(); };
+  }
+
+  const tabs = document.querySelectorAll('.auth-tab');
+  tabs.forEach(tab => {
+	tab.onclick = () => this.switchTab(tab.dataset.tab);
+  });
+
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) loginForm.onsubmit = (e) => this.doLogin(e);
+
+  const regForm = document.getElementById('regForm');
+  if (regForm) regForm.onsubmit = (e) => this.doReg(e);
+
+  const updateBtn = document.getElementById('updateAvatarBtn');
+  if (updateBtn) updateBtn.onclick = () => this.updateAvatar();
+
+  if (!this._delegationBound) {
+	this.box.addEventListener('click', (e) => {
+	  const btn = e.target.closest('[data-action]');
+	  if (btn) {
+		if (btn.dataset.action === 'showLogin') this.showLogin();
+		if (btn.dataset.action === 'showSettings') this.showSettings();
+		if (btn.dataset.action === 'logout') this.logout();
+		if (btn.dataset.action === 'submit') this.submit();
+	  }
+
+	  const replyBtn = e.target.closest('[data-reply]');
+	  if (replyBtn) this.showReply(replyBtn.dataset.reply);
+
+	  const sendBtn = e.target.closest('[data-send-reply]');
+	  if (sendBtn) this.sendReply(sendBtn.dataset.sendReply);
+
+	  const likeBtn = e.target.closest('[data-like]');
+	  if (likeBtn) this.handleLike(likeBtn.dataset.like, likeBtn);
+	});
+	this._delegationBound = true;
+  }
+}
+
+		// 修复：处理点赞功能
+		async handleLike(commentId, btnElement) {
+			if (!this.token) {
+				alert('请先登录后点赞');
+				this.showLogin();
+				return;
 			}
 
-			const tabs = document.querySelectorAll('.auth-tab');
-			tabs.forEach(tab => {
-				tab.onclick = () => this.switchTab(tab.dataset.tab);
-			});
-
-			const loginForm = document.getElementById('loginForm');
-			if (loginForm) {
-				loginForm.onsubmit = (e) => this.doLogin(e);
+			// 检查是否已经点赞过
+			if (this.likedComments.has(commentId)) {
+				alert('您已经点赞过这条评论了');
+				return;
 			}
 
-			const regForm = document.getElementById('regForm');
-			if (regForm) {
-				regForm.onsubmit = (e) => this.doReg(e);
-			}
+			// 防止重复点击
+			if (btnElement.classList.contains('processing')) return;
+			btnElement.classList.add('processing');
 
-			const updateBtn = document.getElementById('updateAvatarBtn');
-			if (updateBtn) {
-				updateBtn.onclick = () => this.updateAvatar();
-			}
-
-			// 使用事件委托，避免重复绑定
-			if (!this._delegationBound) {
-				this.box.addEventListener('click', (e) => {
-					const btn = e.target.closest('[data-action]');
-					if (btn) {
-						if (btn.dataset.action === 'showLogin') this.showLogin();
-						if (btn.dataset.action === 'showSettings') this.showSettings();
-						if (btn.dataset.action === 'logout') this.logout();
-						if (btn.dataset.action === 'submit') this.submit();
-					}
-
-					const replyBtn = e.target.closest('[data-reply]');
-					if (replyBtn) this.showReply(replyBtn.dataset.reply);
-
-					const sendBtn = e.target.closest('[data-send-reply]');
-					if (sendBtn) this.sendReply(sendBtn.dataset.sendReply);
+			try {
+				const res = await fetch(this.api + '/comment-like', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': 'Bearer ' + this.token
+					},
+					body: JSON.stringify({ commentId: commentId })
 				});
-				this._delegationBound = true;
+
+				const data = await res.json();
+
+				if (!res.ok) {
+					if (res.status === 401) {
+						alert('登录已过期，请重新登录');
+						this.logout();
+						return;
+					}
+					throw new Error(data.error || '点赞失败');
+				}
+
+				// 更新UI
+				this.likedComments.add(commentId);
+				btnElement.classList.add('liked');
+				const currentCount = parseInt(btnElement.dataset.count || 0) + 1;
+				btnElement.dataset.count = currentCount;
+				btnElement.innerHTML = `❤️ ${currentCount}`;
+				
+				console.log('点赞成功:', commentId);
+
+			} catch (err) {
+				console.error('点赞失败:', err);
+				alert('点赞失败：' + err.message);
+			} finally {
+				btnElement.classList.remove('processing');
 			}
 		}
 
@@ -937,23 +1007,23 @@
 			if (tab === 'settings' && this.user) {
 				this.refreshSettingsPreview();
 			}
+			
+			if (tab === 'reg') {
+				this._selectedAvatarStyle = this.defaultAvatarStyle;
+				setTimeout(() => this.renderAvatarOptions(), 0);
+			}
 		}
 
 		refreshSettingsPreview() {
 			const preview = document.getElementById('settingsAvatarPreview');
-			if (preview && this.user) {
-				preview.src = this.user.avatar;
-			}
-			// 重置选择状态
-			this._selectedAvatarStyle = null;
+			if (preview && this.user) preview.src = this.user.avatar;
+			this._selectedAvatarStyle = this.defaultAvatarStyle;
 			const settingsContainer = document.getElementById('settingsAvatarStyles');
 			if (settingsContainer) {
 				settingsContainer.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
 			}
 			const customUrlInput = document.getElementById('customAvatarUrl');
-			if (customUrlInput) {
-				customUrlInput.value = '';
-			}
+			if (customUrlInput) customUrlInput.value = '';
 		}
 
 		showLogin() {
@@ -980,11 +1050,10 @@
 			const modal = document.getElementById('modal');
 			if (modal) modal.classList.remove('active');
 			const forms = document.querySelectorAll('.auth-form');
-			forms.forEach(f => {
-				if (f.reset) f.reset();
-			});
+			forms.forEach(f => { if (f.reset) f.reset(); });
 			const msgs = document.querySelectorAll('.error-msg, .success-msg');
 			msgs.forEach(x => x.style.display = 'none');
+			this._selectedAvatarStyle = this.defaultAvatarStyle;
 		}
 
 		async updateAvatar() {
@@ -992,18 +1061,15 @@
 			const settingsOk = document.getElementById('settingsOk');
 			const customUrl = document.getElementById('customAvatarUrl')?.value?.trim();
 
-			// 优先使用自定义URL，如果没有则使用选中的样式
 			let avatarStyle = null;
 			let finalAvatar = null;
 
 			if (customUrl) {
-				// 优先使用自定义URL
 				finalAvatar = customUrl;
 				avatarStyle = 'custom';
 			} else if (this._selectedAvatarStyle) {
-				// 使用选中的样式生成头像
 				avatarStyle = this._selectedAvatarStyle;
-				finalAvatar = `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${encodeURIComponent(this.user.name)}&backgroundColor=b6e3f4`;
+				finalAvatar = this.getAvatarUrl(avatarStyle, this.user.name);
 			}
 
 			if (!finalAvatar) {
@@ -1036,10 +1102,8 @@
 				});
 
 				const data = await res.json();
-
 				if (!res.ok) throw new Error(data.error || '更新失败');
 
-				// 更新本地用户信息
 				this.user.avatar = data.avatar;
 				localStorage.setItem('cmt_user', JSON.stringify(this.user));
 
@@ -1048,12 +1112,9 @@
 					settingsOk.style.display = 'block';
 				}
 
-				// 刷新界面
 				this.init();
 
-				setTimeout(() => {
-					this.hideLogin();
-				}, 1500);
+				setTimeout(() => this.hideLogin(), 1500);
 
 			} catch (errMsg) {
 				if (settingsErr) {
@@ -1091,7 +1152,6 @@
 				});
 
 				const data = await res.json();
-
 				if (!res.ok) throw new Error(data.error || '登录失败');
 
 				this.token = data.token;
@@ -1123,20 +1183,25 @@
 			const err = document.getElementById('regErr');
 			const ok = document.getElementById('regOk');
 
-			// 获取选中的头像样式
-			const selectedStyle = document.querySelector('#regAvatarStyles .avatar-option.selected')?.dataset.avatarStyle;
-			// 获取自定义URL（优先使用）
+			const selectedOption = document.querySelector('#regAvatarStyles .avatar-option.selected');
+			const selectedStyle = selectedOption?.dataset?.avatarStyle || this._selectedAvatarStyle;
 			const customUrl = document.getElementById('regCustomAvatarUrl')?.value?.trim();
 
-			// 确定最终使用的头像
-			let avatarStyle = selectedStyle || 'pixel-art';
+			console.log('注册 - 选中的头像风格:', selectedStyle);
+			console.log('注册 - 自定义URL:', customUrl);
+
+			let avatarStyle = selectedStyle || this.defaultAvatarStyle;
 			let finalAvatarUrl = null;
 
 			if (customUrl) {
-				// 优先使用自定义URL
 				finalAvatarUrl = customUrl;
 				avatarStyle = 'custom';
+			} else {
+				finalAvatarUrl = this.getAvatarUrl(avatarStyle, form.name.value || 'user');
 			}
+
+			console.log('注册 - 最终使用的风格:', avatarStyle);
+			console.log('注册 - 最终头像URL:', finalAvatarUrl);
 
 			if (btn) {
 				btn.disabled = true;
@@ -1154,12 +1219,12 @@
 						email: form.email.value,
 						password: form.pwd.value,
 						avatarStyle: avatarStyle,
-						customAvatarUrl: customUrl || null
+						customAvatarUrl: customUrl || null,
+						avatar: finalAvatarUrl
 					})
 				});
 
 				const data = await res.json();
-
 				if (!res.ok) throw new Error(data.error || '注册失败');
 
 				if (ok) {
@@ -1167,7 +1232,6 @@
 					ok.style.display = 'block';
 				}
 
-				// 自动登录
 				const loginRes = await fetch(this.api + '/auth-login', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -1178,7 +1242,6 @@
 				});
 
 				const loginData = await loginRes.json();
-
 				if (!loginRes.ok) throw new Error(loginData.error || '自动登录失败');
 
 				this.token = loginData.token;
@@ -1208,6 +1271,9 @@
 			localStorage.removeItem('cmt_user');
 			this.token = null;
 			this.user = null;
+			this._selectedAvatarStyle = this.defaultAvatarStyle;
+			// 修复：清空点赞记录
+			this.likedComments.clear();
 			this.init();
 		}
 
@@ -1223,6 +1289,11 @@
 				if (!data.comments || data.comments.length === 0) {
 					list.innerHTML = '<div class="empty">🍃 暂无评论，来抢沙发吧！</div>';
 					return;
+				}
+
+				// 修复：加载时同步服务器返回的点赞状态
+				if (data.likedComments) {
+					this.likedComments = new Set(data.likedComments);
 				}
 
 				list.innerHTML = data.comments.map(c => this.renderComment(c)).join('');
@@ -1243,23 +1314,34 @@
 
 			const replyBox = !isReply && this.user
 				? `<div class="reply-input" id="rp-${c._id}">
-					<textarea class="reply-textarea" id="rt-${c._id}" placeholder="回复 ${this.escapeHtml(c.authorName)}..."></textarea>
+					<textarea class="reply-textarea" id="rt-${c._id}" maxlength="5000" placeholder="回复 ${this.escapeHtml(c.authorName)}..."></textarea>
 					<div class="comment-actions">
 						<button class="submit-btn" data-send-reply="${c._id}">发送回复</button>
 					</div>
 				</div>`
 				: '';
 
+			// 修复：添加点赞按钮的 data 属性和状态
+			const isLiked = this.likedComments.has(c._id);
+			const likeCount = c.likes || 0;
+			const likeIcon = isLiked ? '❤️' : '👍';
+			const likeClass = isLiked ? 'comment-action liked' : 'comment-action';
+			
 			const actions = !isReply
 				? `<div class="comment-footer">
 					${this.user ? `<span class="comment-action" data-reply="${c._id}">↩️ 回复</span>` : ''}
-					<span class="comment-action">👍 ${c.likes || 0}</span>
+					<span class="${likeClass}" 
+						  data-like="${c._id}" 
+						  data-count="${likeCount}"
+						  title="${isLiked ? '您已点赞' : '点击点赞'}">
+						${likeIcon} ${likeCount}
+					</span>
 				</div>`
 				: '';
 
 			return `
-				<div class="${isReply ? 'reply-item' : 'comment-item'}">
-					<img src="${c.authorAvatar}" class="comment-avatar" onerror="this.src='https://api.dicebear.com/7.x/pixel-art/svg?seed=default'">
+				<div class="${isReply ? 'reply-item' : 'comment-item'}" data-comment-id="${c._id}">
+					<img src="${c.authorAvatar}" class="comment-avatar" onerror="this.src='https://api.dicebear.com/${this.dicebearVersion}/pixel-art/svg?seed=default'">
 					<div class="comment-body">
 						<div class="comment-header">
 							<span class="comment-author">${this.escapeHtml(c.authorName)}</span>
@@ -1275,10 +1357,9 @@
 		}
 
 		escapeHtml(text) {
-			if (!text) return '';
-			const div = document.createElement('div');
-			div.textContent = text;
-			return div.innerHTML;
+		  if (!text) return '';
+		  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+		  return text.replace(/[&<>"']/g, m => map[m]);
 		}
 
 		showReply(id) {
@@ -1304,13 +1385,14 @@
 				btn.textContent = '发送中...';
 			}
 
-			try {
-				await this.postComment(content);
-				textarea.value = '';
-				await this.load();
-			} catch (err) {
-				alert('发送失败：' + err.message);
-			} finally {
+				try {
+				  await this.postComment(content);
+				  textarea.value = '';
+				  alert('🌱 评论已提交，审核通过后将显示');
+ 				 await this.load();
+				} catch (err) {
+				  alert('发送失败：' + err.message);
+				} finally {
 				if (btn) {
 					btn.disabled = false;
 					btn.textContent = '🌱 发表评论';
@@ -1325,19 +1407,18 @@
 			if (!content) return;
 
 			try {
-				await this.postComment(content, parentId);
-				const replyBox = document.getElementById('rp-' + parentId);
-				if (replyBox) replyBox.classList.remove('active');
-				await this.load();
+			  await this.postComment(content, parentId);
+			  const replyBox = document.getElementById('rp-' + parentId);
+			  if (replyBox) replyBox.classList.remove('active');
+			  alert('🌱 回复已提交，审核通过后将显示');
+			  await this.load();
 			} catch (err) {
-				alert('发送失败：' + err.message);
+			  alert('发送失败：' + err.message);
 			}
 		}
 
 		async postComment(content, parentId = null) {
-			if (!this.token) {
-				throw new Error('请先登录');
-			}
+			if (!this.token) throw new Error('请先登录');
 
 			const res = await fetch(this.api + '/comment-post', { 
 				method: 'POST', 
